@@ -24,7 +24,7 @@ Role is to collect data from different sources, evaluate conditions, and deliver
 
 ### Kubernetes Event Monitoring
 
-* Use **Kubernetes Python client**.
+* Use **Kubernetes client or Kube Api**.
 * Monitor cluster events in **real-time**.
 * Filter by **namespace** or **event type** (e.g., `Warning`, `Killing`).
 * Push alerts immediately when relevant events occur.

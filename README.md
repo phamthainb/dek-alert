@@ -1,49 +1,85 @@
-# ✅ Key Features of `AlertHub`
 
-Name: AlertHub
-Purpose: Centralized platform to manage alerts from multiple sources and send notifications.
+**AlertHub**, a centralized monitoring and alerting system.
 
-## 📦 Database Monitoring
-- [ ] Supports common databases: **Oracle**, **PostgreSQL**, **MySQL**, **SQLite**
-- [ ] Allows pre-configured SQL queries
-- [ ] Periodically executes queries and checks alert conditions
-- [ ] Sends alerts when results match specified conditions
 
-## 📊 ELK Stack Log Monitoring
-- [ ] Connects to **Elasticsearch** via REST API
-- [ ] Supports configurable alert **keywords**, **index***, **conditions**
-- [ ] Periodically searches recent logs for keywords
-- [ ] Sends alerts after search
+Role is to collect data from different sources, evaluate conditions, and deliver actionable alerts.
 
-## ☸️ Kubernetes Event Monitoring
-- [ ] Uses Kubernetes Python client to monitor **Events**
-- [ ] Filters by **namespace** or event type (e.g., Warning, Killing, etc.)
-- [ ] Sends real-time Telegram alerts when events are created
+---
 
-## 📩 Alert Integration
-- [ ] Sends alerts in clear, concise text format
-- [ ] Can include **links**, **service status**, or **images** if needed
-- [ ] Can using custom script for can send to other platform like: telegram, webhook, mail,...
+## **Capabilities**
 
-## 🖥️ Simple Web Interface (UI)
-- [ ] View alert history
-- [ ] Manage: DB queries, Elasticsearch keywords, K8s event filters
-- [ ] Update Telegram / K8s / DB configuration via UI
+### Database Monitoring
 
-## 🗂️ Configuration and State Persistence
-- [ ] Uses SQLite to store:
-  - [ ] Configured SQL queries
-  - [ ] Elasticsearch keywords
-  - [ ] List of monitored namespaces
-  - [ ] Telegram bot token and chat_id
+* Connect to **Oracle, PostgreSQL, MySQL, SQLite**.
+* Run **pre-configured SQL queries** on schedule.
+* Check query results against **alert conditions**.
+* Send alerts when conditions are met.
 
-## 🚀 Runs Reliably on Kubernetes
-- [ ] Packaged as a Docker container
-- [ ] Deployable as a **Pod** or **CronJob** in-cluster
-- [ ] Supports **persistent volume** for long-term SQLite storage
+### Log Monitoring (ELK / Elasticsearch)
 
-## Teach stacks
-- Nodejs for backend and jobs
-- Reactjs and tailwindcss for frontend
-- Database using sqlite
+* Connect via **REST API**.
+* Support **keywords, index patterns, and conditions**.
+* Periodically search logs for matches.
+* Trigger alerts if matches are found.
 
+### Kubernetes Event Monitoring
+
+* Use **Kubernetes Python client**.
+* Monitor cluster events in **real-time**.
+* Filter by **namespace** or **event type** (e.g., `Warning`, `Killing`).
+* Push alerts immediately when relevant events occur.
+
+---
+
+## **Alert Delivery**
+
+* Alerts must be **concise, clear text**.
+* Optional: include **links, status info, images**.
+* Delivery channels:
+
+  * **Telegram**
+  * **Webhook**
+  * **Email**
+  * Extendable via **custom scripts**.
+
+---
+
+## **Web Interface (UI)**
+
+* Dashboard features:
+
+  * View **alert history**.
+  * Manage **DB queries, Elasticsearch keywords, K8s filters**.
+  * Update **Telegram / K8s / DB configuration**.
+
+---
+
+## **Configuration & State**
+
+* Store in **SQLite**:
+
+  * DB queries
+  * Elasticsearch keywords
+  * Kubernetes namespaces
+  * Telegram credentials
+* Ensure **persistent state** across restarts.
+
+---
+
+## **Deployment**
+
+* Distributed as a **Docker container**.
+* Deployable as:
+
+  * **Pod** (continuous monitoring)
+  * **CronJob** (scheduled tasks)
+* Supports **persistent volumes** for SQLite.
+
+---
+
+## **Tech Stack**
+
+* **Backend & Jobs:** Node.js
+* **Frontend:** React.js + Tailwind CSS
+* **Database:** SQLite
+* **Kubernetes-ready** (Dockerized services)

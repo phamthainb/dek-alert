@@ -41,3 +41,9 @@ Purpose: Centralized platform to manage alerts from multiple sources and send no
 - [ ] Packaged as a Docker container
 - [ ] Deployable as a **Pod** or **CronJob** in-cluster
 - [ ] Supports **persistent volume** for long-term SQLite storage
+
+## Teach stacks
+- Nodejs for backend and jobs
+- Reactjs and tailwindcss for frontend
+- Database using sqlite
+

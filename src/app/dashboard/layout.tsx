@@ -1,17 +1,21 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { getCurrentUser } from "@/lib/auth";
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
 
 export const metadata: Metadata = {
   title: "Alert Hub",
   description: "Proactive System Health Monitoring Dashboard",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Check authentication for all routes except login
+  const user = await getCurrentUser();
+
   return (
     <html lang="en" className="dark">
       <head>

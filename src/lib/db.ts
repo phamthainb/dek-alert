@@ -1,148 +1,97 @@
+import 'reflect-metadata';
 import { dataSources, monitors, webhooks } from "@/lib/mock-data";
 import bcrypt from "bcryptjs";
-import Database from "better-sqlite3";
+import { getDataSource } from './data-source';
+import { User, Monitor, AlertHistory, DataSource, Webhook } from './entities';
 
-const db = new Database("sentinel.db");
+export async function initializeDb() {
+  const dataSource = await getDataSource();
 
-export function initializeDb() {
-  db.exec(`
-    DROP TABLE IF EXISTS sessions;
-    DROP TABLE IF EXISTS users;
-    DROP TABLE IF EXISTS alert_history;
-    DROP TABLE IF EXISTS monitors;
-    DROP TABLE IF EXISTS data_sources;
-    DROP TABLE IF EXISTS webhooks;
+  // Run migrations
+  await dataSource.runMigrations();
 
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      last_login TEXT
-    );
+  // Clear existing data
+  await dataSource.query('DELETE FROM alert_history');
+  await dataSource.query('DELETE FROM sessions');
+  await dataSource.query('DELETE FROM monitors');
+  await dataSource.query('DELETE FROM data_sources');
+  await dataSource.query('DELETE FROM webhooks');
+  await dataSource.query('DELETE FROM users');
 
-    CREATE TABLE sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-    );
+  // Get repositories
+  const userRepo = dataSource.getRepository(User);
+  const monitorRepo = dataSource.getRepository(Monitor);
+  const alertHistoryRepo = dataSource.getRepository(AlertHistory);
+  const dataSourceRepo = dataSource.getRepository(DataSource);
+  const webhookRepo = dataSource.getRepository(Webhook);
 
-    CREATE TABLE monitors (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('Elasticsearch', 'SQL')),
-      status TEXT NOT NULL CHECK(status IN ('normal', 'alert', 'pending')),
-      lastCheck TEXT,
-      keywords TEXT, -- JSON array of strings
-      dbType TEXT CHECK(dbType IN ('Oracle', 'MySQL', 'PostgreSQL')),
-      query TEXT,
-      schedule TEXT
-    );
+  // Insert default admin user (password: admin123)
+  const adminId = "admin-1";
+  const passwordHash = bcrypt.hashSync("admin123", 10);
+  
+  const adminUser = userRepo.create({
+    id: adminId,
+    username: "admin",
+    email: "admin@alerthub.com",
+    password_hash: passwordHash,
+    created_at: new Date().toISOString(),
+  });
+  await userRepo.save(adminUser);
 
-    CREATE TABLE alert_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      monitor_id TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      message TEXT NOT NULL,
-      status TEXT NOT NULL CHECK(status IN ('alert', 'normal')),
-      FOREIGN KEY (monitor_id) REFERENCES monitors (id) ON DELETE CASCADE
-    );
+  // Insert monitors
+  for (const monitor of monitors) {
+    const newMonitor = monitorRepo.create({
+      id: monitor.id,
+      name: monitor.name,
+      type: monitor.type,
+      status: monitor.status,
+      lastCheck: monitor.lastCheck,
+      keywords: monitor.type === "Elasticsearch" ? JSON.stringify(monitor.keywords) : undefined,
+      dbType: monitor.type === "SQL" ? monitor.dbType : undefined,
+      query: monitor.type === "SQL" ? monitor.query : undefined,
+      schedule: monitor.type === "SQL" ? monitor.schedule : undefined,
+    });
+    await monitorRepo.save(newMonitor);
 
-    CREATE TABLE data_sources (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('Elasticsearch', 'PostgreSQL', 'Oracle', 'MySQL')),
-      url TEXT,
-      apiKey TEXT,
-      host TEXT,
-      port INTEGER,
-      user TEXT,
-      password TEXT,
-      database TEXT
-    );
-
-    CREATE TABLE webhooks (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      url TEXT,
-      platform TEXT NOT NULL CHECK(platform IN ('Slack', 'Discord', 'Generic', 'Custom'))
-    );
-  `);
-
-  const insertMonitor = db.prepare(
-    "INSERT INTO monitors (id, name, type, status, lastCheck, keywords, dbType, query, schedule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  );
-  const insertAlertHistory = db.prepare(
-    "INSERT INTO alert_history (monitor_id, timestamp, message, status) VALUES (?, ?, ?, ?)"
-  );
-  const insertDataSource = db.prepare(
-    "INSERT INTO data_sources (id, name, type, url, apiKey, host, port, user, password, database) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  );
-  const insertWebhook = db.prepare(
-    "INSERT INTO webhooks (id, name, url, platform) VALUES (?, ?, ?, ?)"
-  );
-  const insertUser = db.prepare(
-    "INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)"
-  );
-
-  db.transaction(() => {
-    // Insert default admin user (password: admin123)
-    const adminId = "admin-1";
-    const passwordHash = bcrypt.hashSync("admin123", 10);
-    insertUser.run(
-      adminId,
-      "admin",
-      "admin@alerthub.com",
-      passwordHash,
-      new Date().toISOString()
-    );
-
-    monitors.forEach((monitor) => {
-      insertMonitor.run(
-        monitor.id,
-        monitor.name,
-        monitor.type,
-        monitor.status,
-        monitor.lastCheck,
-        monitor.type === "Elasticsearch"
-          ? JSON.stringify(monitor.keywords)
-          : null,
-        monitor.type === "SQL" ? monitor.dbType : null,
-        monitor.type === "SQL" ? monitor.query : null,
-        monitor.type === "SQL" ? monitor.schedule : null
-      );
-      monitor.alertHistory.forEach((entry) => {
-        insertAlertHistory.run(
-          monitor.id,
-          entry.timestamp,
-          entry.message,
-          entry.status
-        );
+    // Insert alert history for this monitor
+    for (const entry of monitor.alertHistory) {
+      const alertEntry = alertHistoryRepo.create({
+        monitor_id: monitor.id,
+        timestamp: entry.timestamp,
+        message: entry.message,
+        status: entry.status,
       });
-    });
+      await alertHistoryRepo.save(alertEntry);
+    }
+  }
 
-    dataSources.forEach((ds) => {
-      insertDataSource.run(
-        ds.id,
-        ds.name,
-        ds.type,
-        ds.type === "Elasticsearch" ? ds.url : null,
-        ds.type === "Elasticsearch" ? ds.apiKey : null,
-        ds.type !== "Elasticsearch" ? ds.host : null,
-        ds.type !== "Elasticsearch" ? ds.port : null,
-        ds.type !== "Elasticsearch" ? ds.user : null,
-        ds.type !== "Elasticsearch" ? ds.password : null,
-        ds.type !== "Elasticsearch" ? ds.database : null
-      );
+  // Insert data sources
+  for (const ds of dataSources) {
+    const newDs = dataSourceRepo.create({
+      id: ds.id,
+      name: ds.name,
+      type: ds.type,
+      url: ds.type === "Elasticsearch" ? ds.url : undefined,
+      apiKey: ds.type === "Elasticsearch" ? ds.apiKey : undefined,
+      host: ds.type !== "Elasticsearch" ? ds.host : undefined,
+      port: ds.type !== "Elasticsearch" ? ds.port : undefined,
+      user: ds.type !== "Elasticsearch" ? ds.user : undefined,
+      password: ds.type !== "Elasticsearch" ? ds.password : undefined,
+      database: ds.type !== "Elasticsearch" ? ds.database : undefined,
     });
+    await dataSourceRepo.save(newDs);
+  }
 
-    webhooks.forEach((wh) => {
-      insertWebhook.run(wh.id, wh.name, wh.url, wh.platform);
+  // Insert webhooks
+  for (const wh of webhooks) {
+    const newWh = webhookRepo.create({
+      id: wh.id,
+      name: wh.name,
+      url: wh.url,
+      platform: wh.platform,
     });
-  })();
+    await webhookRepo.save(newWh);
+  }
 
   return {
     monitors: monitors.length,
@@ -151,4 +100,9 @@ export function initializeDb() {
   };
 }
 
+// Export empty default for backward compatibility with actions.ts
+const db = {};
 export default db;
+
+export { getDataSource };
+

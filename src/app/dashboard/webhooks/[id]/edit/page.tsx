@@ -15,10 +15,10 @@ import {
 import { CustomScriptEditor } from "@/components/custom-script-editor";
 import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
-import db from '@/lib/db';
 import type { Webhook } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { executeWebhookTestScript } from "@/lib/actions";
+import { getWebhookById } from '@/lib/data-actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,29 +49,28 @@ function sendNotification(alertData) {
   console.log('Custom notification sent:', alertData);
 }`;
 
-function getWebhook(id: string): Webhook | null {
-  try {
-    const stmt = db.prepare('SELECT * FROM webhooks WHERE id = ?');
-    const webhook = stmt.get(id) as any;
-    if (!webhook) return null;
-    return webhook;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('no such table')) {
-      console.warn("Webhooks table not found. It probably needs to be initialized.");
-      return null;
-    }
-    console.error(`Failed to fetch webhook ${id}:`, error);
-    return null;
-  }
-}
-
 export default function EditWebhookPage({ params }: { params: { id: string } }) {
-  const webhook = getWebhook(params.id);
-  const [platform, setPlatform] = React.useState(webhook?.platform.toLowerCase() || 'generic');
+  const [webhook, setWebhook] = React.useState<Webhook | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [platform, setPlatform] = React.useState('generic');
   const [code, setCode] = React.useState(placeholderScript);
   const [isTesting, setIsTesting] = React.useState(false);
   const [testResult, setTestResult] = React.useState<{ success: boolean; error?: string; logs: string[] } | null>(null);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    getWebhookById(params.id).then(w => {
+      setWebhook(w);
+      if (w) {
+        setPlatform(w.platform.toLowerCase());
+      }
+      setLoading(false);
+    });
+  }, [params.id]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   if (!webhook) {
     notFound();

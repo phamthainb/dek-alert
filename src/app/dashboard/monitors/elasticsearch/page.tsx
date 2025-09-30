@@ -1,28 +1,40 @@
+import 'reflect-metadata';
 import { Button } from '@/components/ui/button';
 import { MonitorsTable } from '@/components/monitors/monitors-table';
 import { PageHeader } from '@/components/page-header';
 import type { Monitor } from '@/lib/types';
-import db from '@/lib/db';
+import { getDataSource } from '@/lib/db';
+import { Monitor as MonitorEntity } from '@/lib/entities';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 
-function getElasticsearchMonitors(): Monitor[] {
+async function getElasticsearchMonitors(): Promise<Monitor[]> {
   try {
-    const stmt = db.prepare(`
-      SELECT m.*,
-             (SELECT json_group_array(json_object('timestamp', ah.timestamp, 'message', ah.message, 'status', ah.status))
-              FROM alert_history ah
-              WHERE ah.monitor_id = m.id
-              ORDER BY ah.timestamp DESC) as alertHistory
-      FROM monitors m
-      WHERE m.type = 'Elasticsearch'
-    `);
-    const monitors = stmt.all() as any[];
+    const dataSource = await getDataSource();
+    const monitorRepo = dataSource.getRepository(MonitorEntity);
+
+    const monitors = await monitorRepo.find({
+      where: { type: 'Elasticsearch' },
+      relations: ['alertHistory'],
+      order: {
+        alertHistory: {
+          timestamp: 'DESC',
+        },
+      },
+    });
 
     return monitors.map(m => ({
-      ...m,
-      alertHistory: m.alertHistory ? JSON.parse(m.alertHistory) : [],
+      id: m.id,
+      name: m.name,
+      type: 'Elasticsearch' as const,
+      status: m.status,
+      lastCheck: m.lastCheck || '',
       keywords: m.keywords ? JSON.parse(m.keywords) : [],
+      alertHistory: (m.alertHistory || []).map(ah => ({
+        timestamp: ah.timestamp,
+        message: ah.message,
+        status: ah.status,
+      })),
     }));
   } catch (error) {
     if (error instanceof Error && error.message.includes('no such table')) {
@@ -34,8 +46,8 @@ function getElasticsearchMonitors(): Monitor[] {
   }
 }
 
-export default function ElasticsearchMonitorsPage() {
-  const monitors = getElasticsearchMonitors();
+export default async function ElasticsearchMonitorsPage() {
+  const monitors = await getElasticsearchMonitors();
 
   const sortedMonitors = [...monitors].sort((a, b) => {
     const statusOrder = { alert: 0, pending: 1, normal: 2 };

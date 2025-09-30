@@ -1,4 +1,4 @@
-# **App Name**: Vigilant Sentinel
+# **App Name**: Alert Hub
 
 ## Core Features:
 

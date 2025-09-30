@@ -80,6 +80,66 @@ Role is to collect data from different sources, evaluate conditions, and deliver
 ## **Tech Stack**
 
 * **Backend & Jobs:** Node.js
-* **Frontend:** React.js + Tailwind CSS
-* **Database:** SQLite
+* **Frontend:** React.js (Next.js 15) + Tailwind CSS
+* **Database:** SQLite with TypeORM
 * **Kubernetes-ready** (Dockerized services)
+
+---
+
+## **Getting Started**
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/phamthainb/alert-hub.git
+cd alert-hub
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Configure environment (optional):
+```bash
+cp .env.example .env
+# Edit .env if needed
+```
+
+4. Run in development mode:
+```bash
+npm run dev
+```
+
+5. Initialize the database:
+   - Navigate to `http://localhost:9002/dashboard/settings`
+   - Click "Initialize Database" to create tables and seed with sample data
+   - Default login: username `admin`, password `admin123`
+
+### Building for Production
+
+```bash
+npm run build
+npm start
+```
+
+---
+
+## **Database Management**
+
+Alert Hub uses **TypeORM** for database operations, providing:
+
+- Type-safe database queries
+- Entity-based data modeling  
+- Automatic migrations
+- Relationship management
+
+For detailed information on working with the database, see [TypeORM Migration Guide](docs/TYPEORM_MIGRATION.md).
+
+---

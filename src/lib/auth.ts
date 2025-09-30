@@ -1,6 +1,8 @@
+import 'reflect-metadata';
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import db from "./db";
+import { getDataSource } from "./data-source";
+import { User as UserEntity, Session as SessionEntity } from "./entities";
 import type { Session, User } from "./types";
 
 const SESSION_COOKIE_NAME = "auth-session";
@@ -22,15 +24,21 @@ export function generateSessionId(): string {
 }
 
 export async function createSession(userId: string): Promise<Session> {
+  const dataSource = await getDataSource();
+  const sessionRepo = dataSource.getRepository(SessionEntity);
+
   const sessionId = generateSessionId();
   const expiresAt = new Date(Date.now() + SESSION_DURATION).toISOString();
   const createdAt = new Date().toISOString();
 
-  const stmt = db.prepare(
-    "INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)"
-  );
+  const session = sessionRepo.create({
+    id: sessionId,
+    user_id: userId,
+    expires_at: expiresAt,
+    created_at: createdAt,
+  });
 
-  stmt.run(sessionId, userId, expiresAt, createdAt);
+  await sessionRepo.save(session);
 
   return {
     id: sessionId,
@@ -41,46 +49,91 @@ export async function createSession(userId: string): Promise<Session> {
 }
 
 export async function getSession(sessionId: string): Promise<Session | null> {
-  const stmt = db.prepare(
-    "SELECT * FROM sessions WHERE id = ? AND expires_at > ?"
-  );
+  const dataSource = await getDataSource();
+  const sessionRepo = dataSource.getRepository(SessionEntity);
 
-  const session = stmt.get(sessionId, new Date().toISOString()) as
-    | Session
-    | undefined;
-  return session || null;
+  const session = await sessionRepo.findOne({
+    where: { id: sessionId },
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  // Check if session is expired
+  if (new Date(session.expires_at) <= new Date()) {
+    await sessionRepo.remove(session);
+    return null;
+  }
+
+  return {
+    id: session.id,
+    userId: session.user_id,
+    expiresAt: session.expires_at,
+    createdAt: session.created_at,
+  };
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  const stmt = db.prepare("DELETE FROM sessions WHERE id = ?");
-  stmt.run(sessionId);
+  const dataSource = await getDataSource();
+  const sessionRepo = dataSource.getRepository(SessionEntity);
+
+  await sessionRepo.delete({ id: sessionId });
 }
 
 export async function getUserById(userId: string): Promise<User | null> {
-  const stmt = db.prepare(
-    "SELECT id, username, email, created_at as createdAt, last_login as lastLogin FROM users WHERE id = ?"
-  );
+  const dataSource = await getDataSource();
+  const userRepo = dataSource.getRepository(UserEntity);
 
-  const user = stmt.get(userId) as User | undefined;
-  return user || null;
+  const user = await userRepo.findOne({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    createdAt: user.created_at,
+    lastLogin: user.last_login,
+  };
 }
 
 export async function getUserByUsername(
   username: string
 ): Promise<(User & { password_hash: string }) | null> {
-  const stmt = db.prepare(
-    "SELECT id, username, email, created_at as createdAt, last_login as lastLogin, password_hash FROM users WHERE username = ?"
-  );
+  const dataSource = await getDataSource();
+  const userRepo = dataSource.getRepository(UserEntity);
 
-  const user = stmt.get(username) as
-    | (User & { password_hash: string })
-    | undefined;
-  return user || null;
+  const user = await userRepo.findOne({
+    where: { username },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    createdAt: user.created_at,
+    lastLogin: user.last_login,
+    password_hash: user.password_hash,
+  };
 }
 
 export async function updateLastLogin(userId: string): Promise<void> {
-  const stmt = db.prepare("UPDATE users SET last_login = ? WHERE id = ?");
-  stmt.run(new Date().toISOString(), userId);
+  const dataSource = await getDataSource();
+  const userRepo = dataSource.getRepository(UserEntity);
+
+  await userRepo.update(
+    { id: userId },
+    { last_login: new Date().toISOString() }
+  );
 }
 
 export async function getCurrentUser(): Promise<User | null> {

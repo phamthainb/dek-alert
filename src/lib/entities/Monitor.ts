@@ -1,5 +1,4 @@
 import { Entity, PrimaryColumn, Column, OneToMany } from 'typeorm';
-import { AlertHistory } from './AlertHistory';
 
 @Entity('monitors')
 export class Monitor {
@@ -30,6 +29,6 @@ export class Monitor {
   @Column('text', { nullable: true })
   schedule?: string;
 
-  @OneToMany(() => AlertHistory, (alertHistory) => alertHistory.monitor)
-  alertHistory?: AlertHistory[];
+  @OneToMany('AlertHistory', 'monitor')
+  alertHistory?: any[];
 }

@@ -1,5 +1,4 @@
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from './User';
 
 @Entity('sessions')
 export class Session {
@@ -15,7 +14,7 @@ export class Session {
   @Column('text')
   created_at!: string;
 
-  @ManyToOne(() => User, (user) => user.sessions, { onDelete: 'CASCADE' })
+  @ManyToOne('User', 'sessions', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user?: User;
+  user?: any;
 }

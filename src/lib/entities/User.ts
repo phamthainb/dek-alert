@@ -1,5 +1,4 @@
 import { Entity, PrimaryColumn, Column, OneToMany } from 'typeorm';
-import { Session } from './Session';
 
 @Entity('users')
 export class User {
@@ -21,6 +20,6 @@ export class User {
   @Column('text', { nullable: true })
   last_login?: string;
 
-  @OneToMany(() => Session, (session) => session.user)
-  sessions?: Session[];
+  @OneToMany('Session', 'user')
+  sessions?: any[];
 }

@@ -1,5 +1,4 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Monitor } from './Monitor';
 
 @Entity('alert_history')
 export class AlertHistory {
@@ -18,7 +17,7 @@ export class AlertHistory {
   @Column('text')
   status!: 'alert' | 'normal';
 
-  @ManyToOne(() => Monitor, (monitor) => monitor.alertHistory, { onDelete: 'CASCADE' })
+  @ManyToOne('Monitor', 'alertHistory', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'monitor_id' })
-  monitor?: Monitor;
+  monitor?: any;
 }

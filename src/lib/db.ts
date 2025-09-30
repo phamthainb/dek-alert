@@ -100,5 +100,9 @@ export async function initializeDb() {
   };
 }
 
+// Export empty default for backward compatibility with actions.ts
+const db = {};
+export default db;
+
 export { getDataSource };
 

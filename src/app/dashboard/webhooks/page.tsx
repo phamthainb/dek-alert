@@ -1,15 +1,18 @@
+import 'reflect-metadata';
 import { PageHeader } from '@/components/page-header';
 import { WebhooksTable } from '@/components/webhooks/webhooks-table';
 import type { Webhook } from '@/lib/types';
-import db from '@/lib/db';
+import { getDataSource } from '@/lib/db';
+import { Webhook as WebhookEntity } from '@/lib/entities';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 
-function getWebhooks(): Webhook[] {
+async function getWebhooks(): Promise<Webhook[]> {
   try {
-    const stmt = db.prepare('SELECT * FROM webhooks');
-    return stmt.all() as Webhook[];
+    const dataSource = await getDataSource();
+    const webhookRepo = dataSource.getRepository(WebhookEntity);
+    return await webhookRepo.find();
   } catch (error) {
     if (error instanceof Error && error.message.includes('no such table')) {
       console.warn("Webhooks table not found. It probably needs to be initialized.");
@@ -20,8 +23,8 @@ function getWebhooks(): Webhook[] {
   }
 }
 
-export default function WebhooksPage() {
-  const webhooks = getWebhooks();
+export default async function WebhooksPage() {
+  const webhooks = await getWebhooks();
   return (
     <>
       <PageHeader

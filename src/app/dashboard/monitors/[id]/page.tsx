@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -13,28 +14,45 @@ import {
 import { StatusIndicator } from '@/components/status-indicator';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { Monitor } from '@/lib/types';
-import db from '@/lib/db';
+import { getDataSource } from '@/lib/db';
+import { Monitor as MonitorEntity } from '@/lib/entities';
 
-function getMonitor(id: string): Monitor | null {
+async function getMonitor(id: string): Promise<Monitor | null> {
   try {
-    const stmt = db.prepare(`
-      SELECT m.*, 
-             (SELECT json_group_array(json_object('timestamp', ah.timestamp, 'message', ah.message, 'status', ah.status)) 
-              FROM alert_history ah 
-              WHERE ah.monitor_id = m.id 
-              ORDER BY ah.timestamp DESC) as alertHistory
-      FROM monitors m
-      WHERE m.id = ?
-    `);
-    const monitor = stmt.get(id) as any;
+    const dataSource = await getDataSource();
+    const monitorRepo = dataSource.getRepository(MonitorEntity);
+
+    const monitor = await monitorRepo.findOne({
+      where: { id },
+      relations: ['alertHistory'],
+      order: {
+        alertHistory: {
+          timestamp: 'DESC',
+        },
+      },
+    });
 
     if (!monitor) return null;
 
     return {
-      ...monitor,
-      alertHistory: monitor.alertHistory ? JSON.parse(monitor.alertHistory) : [],
-      keywords: monitor.keywords ? JSON.parse(monitor.keywords) : [],
-    };
+      id: monitor.id,
+      name: monitor.name,
+      type: monitor.type,
+      status: monitor.status,
+      lastCheck: monitor.lastCheck || '',
+      alertHistory: (monitor.alertHistory || []).map(ah => ({
+        timestamp: ah.timestamp,
+        message: ah.message,
+        status: ah.status,
+      })),
+      ...(monitor.type === 'Elasticsearch' ? {
+        keywords: monitor.keywords ? JSON.parse(monitor.keywords) : [],
+      } : {
+        dbType: monitor.dbType!,
+        query: monitor.query || '',
+        schedule: monitor.schedule || '',
+      }),
+    } as Monitor;
   } catch (error) {
     if (error instanceof Error && error.message.includes('no such table')) {
       console.warn("Monitors table not found. It probably needs to be initialized.");
@@ -45,12 +63,12 @@ function getMonitor(id: string): Monitor | null {
   }
 }
 
-export default function MonitorDetailsPage({
+export default async function MonitorDetailsPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const monitor = getMonitor(params.id);
+  const monitor = await getMonitor(params.id);
 
   if (!monitor) {
     notFound();

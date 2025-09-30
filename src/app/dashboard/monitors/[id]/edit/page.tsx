@@ -11,7 +11,7 @@ import { CustomScriptEditor } from "@/components/custom-script-editor";
 import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
 import type { Monitor } from '@/lib/types';
-import db from '@/lib/db';
+import { getMonitorById } from '@/lib/data-actions';
 
 const elkPlaceholderScript = `/**
  * @param {any} logData - The log data that triggered the alert.
@@ -38,32 +38,22 @@ function shouldNotify(queryResult) {
   return true;
 }`;
 
-function getMonitor(id: string): Monitor | null {
-  try {
-    const stmt = db.prepare('SELECT * FROM monitors WHERE id = ?');
-    const monitor = stmt.get(id) as any;
-
-    if (!monitor) return null;
-
-    return {
-      ...monitor,
-      alertHistory: [], // Not needed for edit page
-      keywords: monitor.keywords ? JSON.parse(monitor.keywords) : [],
-    };
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('no such table')) {
-      console.warn("Monitors table not found. It probably needs to be initialized.");
-      return null;
-    }
-    console.error(`Failed to fetch monitor ${id}:`, error);
-    return null;
-  }
-}
-
 export default function EditMonitorPage({ params }: { params: { id: string } }) {
-  const monitor = getMonitor(params.id);
+  const [monitor, setMonitor] = React.useState<Monitor | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const [elkCode, setElkCode] = React.useState(elkPlaceholderScript);
   const [sqlCode, setSqlCode] = React.useState(sqlPlaceholderScript);
+
+  React.useEffect(() => {
+    getMonitorById(params.id).then(m => {
+      setMonitor(m);
+      setLoading(false);
+    });
+  }, [params.id]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   if (!monitor) {
     notFound();

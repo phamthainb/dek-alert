@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import "../globals.css";
 
 export const metadata: Metadata = {
@@ -15,6 +16,10 @@ export default async function RootLayout({
 }>) {
   // Check authentication for all routes except login
   const user = await getCurrentUser();
+
+  if (!user) {
+    return redirect("/login");
+  }
 
   return (
     <html lang="en" className="dark">

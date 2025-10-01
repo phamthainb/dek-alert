@@ -9,11 +9,13 @@ Alert Hub has been migrated from `better-sqlite3` to TypeORM for improved type s
 ### 1. Database Layer Architecture
 
 **Before:**
+
 - Direct SQLite access via `better-sqlite3`
 - Manual SQL query construction
 - Limited type safety
 
 **After:**
+
 - TypeORM with repository pattern
 - Type-safe entity definitions
 - Automatic migrations support
@@ -33,12 +35,14 @@ All database models are now defined as TypeORM entities in `src/lib/entities/`:
 ### 3. Data Access Patterns
 
 **Before (better-sqlite3):**
+
 ```typescript
-const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+const stmt = db.prepare("SELECT * FROM users WHERE id = ?");
 const user = stmt.get(userId);
 ```
 
 **After (TypeORM):**
+
 ```typescript
 const dataSource = await getDataSource();
 const userRepo = dataSource.getRepository(User);
@@ -56,7 +60,8 @@ cp .env.example .env
 ```
 
 Configuration options:
-- `DATABASE_PATH`: Path to SQLite database file (default: `sentinel.db`)
+
+- `DATABASE_PATH`: Path to SQLite database file (default: `alert-hub.db`)
 - `NODE_ENV`: Environment mode (`development` or `production`)
 
 ### 2. Database Initialization
@@ -68,7 +73,7 @@ The database will be automatically initialized on first run. To manually initial
 3. Or run the initialization programmatically:
 
 ```typescript
-import { initializeDb } from '@/lib/db';
+import { initializeDb } from "@/lib/db";
 await initializeDb();
 ```
 
@@ -87,14 +92,14 @@ TypeORM will automatically run migrations when the database is initialized. The 
 1. Create entity file in `src/lib/entities/`:
 
 ```typescript
-import { Entity, PrimaryColumn, Column } from 'typeorm';
+import { Entity, PrimaryColumn, Column } from "typeorm";
 
-@Entity('table_name')
+@Entity("table_name")
 export class MyEntity {
-  @PrimaryColumn('text')
+  @PrimaryColumn("text")
   id!: string;
 
-  @Column('text')
+  @Column("text")
   name!: string;
 }
 ```
@@ -102,13 +107,13 @@ export class MyEntity {
 2. Export entity from `src/lib/entities/index.ts`:
 
 ```typescript
-export { MyEntity } from './MyEntity';
+export { MyEntity } from "./MyEntity";
 ```
 
 3. Add entity to data source in `src/lib/data-source.ts`:
 
 ```typescript
-const { MyEntity } = await import('./entities/MyEntity');
+const { MyEntity } = await import("./entities/MyEntity");
 // Add to entities array
 ```
 
@@ -119,7 +124,7 @@ While TypeORM supports automatic migration generation, for this SQLite setup, we
 1. Create migration file in `src/lib/migrations/`:
 
 ```typescript
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class MyMigration1234567890000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -147,23 +152,23 @@ const monitorRepo = dataSource.getRepository(Monitor);
 
 // Find operations
 const monitors = await monitorRepo.find();
-const monitor = await monitorRepo.findOne({ where: { id: '123' } });
+const monitor = await monitorRepo.findOne({ where: { id: "123" } });
 
 // With relations
 const monitorWithHistory = await monitorRepo.findOne({
-  where: { id: '123' },
-  relations: ['alertHistory'],
+  where: { id: "123" },
+  relations: ["alertHistory"],
 });
 
 // Create and save
-const newMonitor = monitorRepo.create({ id: '123', name: 'Test' });
+const newMonitor = monitorRepo.create({ id: "123", name: "Test" });
 await monitorRepo.save(newMonitor);
 
 // Update
-await monitorRepo.update({ id: '123' }, { name: 'Updated' });
+await monitorRepo.update({ id: "123" }, { name: "Updated" });
 
 // Delete
-await monitorRepo.delete({ id: '123' });
+await monitorRepo.delete({ id: "123" });
 ```
 
 ## Server Actions and Client Components
@@ -172,15 +177,15 @@ For client components that need database access, use server actions defined in `
 
 ```typescript
 // In a client component
-'use client'
+"use client";
 
-import { getMonitorById } from '@/lib/data-actions';
+import { getMonitorById } from "@/lib/data-actions";
 
 export default function MyComponent() {
   const [monitor, setMonitor] = useState(null);
-  
+
   useEffect(() => {
-    getMonitorById('123').then(setMonitor);
+    getMonitorById("123").then(setMonitor);
   }, []);
 }
 ```
@@ -190,6 +195,7 @@ export default function MyComponent() {
 ### Local Testing
 
 1. Initialize a test database:
+
 ```bash
 DATABASE_PATH=test.db npm run dev
 ```
@@ -201,7 +207,7 @@ DATABASE_PATH=test.db npm run dev
 ### Production Deployment
 
 1. Set production environment variables
-2. Ensure `sentinel.db` is persisted in a volume
+2. Ensure `alert-hub.db` is persisted in a volume
 3. Backup database before deployment
 
 ## Troubleshooting
@@ -209,6 +215,7 @@ DATABASE_PATH=test.db npm run dev
 ### Database Not Found
 
 If you get "no such table" errors:
+
 1. Go to Settings page
 2. Click "Initialize Database"
 3. Refresh the page
@@ -216,6 +223,7 @@ If you get "no such table" errors:
 ### Migration Errors
 
 If migrations fail:
+
 1. Check database file permissions
 2. Verify `DATABASE_PATH` is writable
 3. Check logs for specific error messages
@@ -223,6 +231,7 @@ If migrations fail:
 ### Build Errors
 
 If you encounter TypeORM-related build errors:
+
 - Ensure all entities use string-based relation definitions (not imports)
 - Check that `next.config.ts` has proper webpack externals configuration
 - Verify `tsconfig.json` has decorators enabled
@@ -252,6 +261,7 @@ If you encounter TypeORM-related build errors:
 ## Support
 
 For issues or questions:
+
 1. Check the TypeORM documentation: https://typeorm.io
 2. Review entity definitions in `src/lib/entities/`
 3. Check server actions in `src/lib/data-actions.ts`
